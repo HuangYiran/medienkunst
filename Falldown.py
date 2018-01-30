@@ -1,6 +1,7 @@
 import time
+import cv2
 
-class Push():
+class Push(object):
     def __init__(self, init_sx, init_sy, init_ax, init_ay):
         """
         input:
@@ -30,8 +31,8 @@ class Push():
         out_x = x + self.sx * t + self.ax * t
         out_y = y + self.sy * t + self.ay * t
         # update the basic attris
-        self.sx = self.sx + self.fx / m
-        self.sy = self.sy + self.fy / m
+        self.sx = self.sx + self.ax * t
+        self.sy = self.sy + self.ay * t
         self.t = ti
         # return the new coordinate
         obj.cor_x = out_x

@@ -1,0 +1,25 @@
+version: '3.4'
+services:
+  opencv:
+    image: chipgarner/opencv3-webcam:python2
+    build: 
+      context: ./opencv/
+      dockerfile: Dockerfile
+
+    network_mode: "host"
+    environment:
+        - "DISPLAY=$DISPLAY"
+        - "QT_X11_NO_MITSHM=1"
+    devices:
+        - "/dev/video0:/dev/video0"
+    volumes:
+        - "/tmp/.X11-unix:/tmp/.X11-unix:ro"
+        - "/etc/localtime:/etc/localtime:ro"
+        #- "$HOME/workspace/:/home/workspace/:z"
+        - "/home/bob/my_root/workspace/mediakunst/workspace/:/home/workspace/:z"
+
+    container_name: cv
+    tty: true
+    command: bash
+
+
