@@ -54,9 +54,7 @@ class Dodger:
                     cnt = 0
 
             if mirror and stage is 'running':
-                img = cv2.flip(img, 1) # ???
-                # process the frames to get a representative
-
+                # img = cv2.flip(img, 1) # ???
                 # create a stone if necessary
                 #stone = stone_fact.create(time.time)
                 if self.debug:
@@ -69,6 +67,10 @@ class Dodger:
                     print "moving the stone"
                 for stone in self.stones:
                     stone.run()
+                # process the frame to get a representative
+                if self.debug:
+                    print "prepare the img"
+                img = self._prepare_img(frames)
                 # check if the stones hit the something: the player or the floor. If so, change its state and img
                 if self.debug:
                     print "cheking the stone state"
@@ -91,6 +93,13 @@ class Dodger:
             stage = 'prepare'
         self.cam.release()
         cv2.destroyAllWindows()
+
+    def _prepare_img(self, frames):
+        """
+        process the frames to get a representative
+        return img
+        """
+        pass
 
     def _check_hit(self, img):
         """
