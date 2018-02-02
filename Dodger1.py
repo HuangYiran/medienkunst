@@ -4,7 +4,7 @@ import numpy as np
 from StoneFactory import StoneFactory
 from Stone import Stone
 from Falldown import * 
-from utils import *
+from utils1 import *
 from matplotlib import pyplot as plt # because when i use cv2 to show the image, my laptor corrupt. so i use the plt instead
 
 class Dodger:
