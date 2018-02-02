@@ -25,7 +25,7 @@ class Push(object):
         # assert x, y 
 
         # get the time and calcute the diffrence of the time. unit in second
-        ti = time.clock()
+        ti = time.time()
         t = ti - self.t
         # compute the movement in x and y axis
         out_x = x + self.sx * t + self.ax * t
@@ -41,5 +41,5 @@ class Push(object):
 
 class Gravity(Push):
     def __init__(self):
-        super(Gravity, self).__init__(0, 0, 0, 9.8)
+        super(Gravity, self).__init__(0, 0, 9.8, 0)
 

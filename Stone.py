@@ -13,7 +13,7 @@ class Stone():
         countdown: when the state of the stone changed to dead or win, start to count down. when countdown == 0, the stone will be removed from the stones list.
         """
         self.img = init_img
-        self.img = cv2.resize(self.img, 100, 100)
+        self.img = cv2.resize(self.img, (100, 100))
         self.mask, self.mask_inv = self._create_mask()
         # set the img to a fix size
         self.cor_x = init_x
@@ -26,7 +26,7 @@ class Stone():
 
     def _create_mask(self):
         img2gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        ret, mask = cv2.threshold(img2gray, 10, 240, cv2.THRESH_BINARY)
+        ret, mask = cv2.threshold(img2gray, 240, 255, cv2.THRESH_BINARY_INV) # because the backgroud of the stone white is, we use THRES_BINARY_INV
         mask_inv = cv2.bitwise_not(mask)
         return mask, mask_inv
 
@@ -41,7 +41,18 @@ class Stone():
         return self.img.shape
 
     def get_address(self):
+        """
+        the real address of the stone can be float, 
+        but when you try to draw the stone on the image, we need a int value, so we create this function 
+        if you want to get the real address, you can use get_real_address() function
+        """
         # (x, y) : (cor_x, cor_y)
+        return int(round(self.cor_x)), int(round(self.cor_y))
+
+    def get_real_address(self):
+        """
+        return the real address of the stone, this value can be float
+        """
         return cor_x, cor_y
 
     def add_mode(self, mode):
@@ -62,9 +73,11 @@ class Stone():
     def set_state(self, state):
         self.state = state
         if state == 'win':
-            self.img = 'win' # set the img to a winner sign
+            # self.img = 'win'  set the img to a winner sign
+            pass
         elif state == 'dead':
-            self.img = 'dead' # set the img to a loser sign
+            # self.img = 'dead'  set the img to a loser sign
+            pass
 
     def get_state(self):
         return self.state

@@ -38,8 +38,11 @@ class Dodger:
         mirror = True # decide weather to display the video or not
         stone_fact = StoneFactory(5, './stones') # the factory to create stone
         #while True:
-        while True:
+        for i in range(1000):
             ret_val, img = self.cam.read() # get the current img from the camera
+            if not isinstance(img, np.ndarray):
+                print "img is NoneType, i also don't know why"
+                continue
             if stage is 'prepare':
                 # save newest batch_size frames in the frames. and try to do some preparation if necessary
                 if cnt < self.cycle_length:
@@ -58,6 +61,7 @@ class Dodger:
                 # create a stone if necessary
                 #stone = stone_fact.create(time.time)
                 if self.debug:
+                    print("current num of stones:", len(self.stones))
                     print "creating a new stone"
                 stone = stone_fact.create_abs()
                 if stone:
@@ -86,11 +90,14 @@ class Dodger:
                 # display the img
                 if self.debug:
                     print "displaying the img"
-                # cv2.imshow('webcam', img)
+                cv2.imshow('window', img)
+                #plt.imshow(img)
+                #plt.show()
                 # listen to key esc, when pressed, end the program
-            #if cv2.waitKey(1) == 27:
-            #    break
-            stage = 'prepare'
+                #time.sleep(1)
+            if cv2.waitKey(1) == 27:
+                break
+        stage = 'prepare'
         self.cam.release()
         cv2.destroyAllWindows()
 
@@ -99,7 +106,7 @@ class Dodger:
         process the frames to get a representative
         return img
         """
-        pass
+        return frames[-1]
 
     def _check_hit(self, img):
         """
@@ -109,32 +116,116 @@ class Dodger:
             2. get the address of the human
             3. check if stone and human have intersetion
         """
-        pass
+        # set the line
+        line = int(round(0.3 * img.shape[0]))
+        # get the roi of the player
+        mask_player = self._get_playermask(img, line)
+        threshold = 100
+        for stone in self.stones:
+            # only process the stone with the state 'live'
+            if stone.get_state() != 'live':
+                continue
+            # black out the background of the stone picture
+            img_stone = stone.get_img()
+            _, mask_inv_stone = stone.get_mask()
+            img_stone = cv2.bitwise_and(img_stone, 0, mask = mask_inv_stone)
+            # create a blackboard
+            blackboard = np.zeros(self.bg.shape, np.uint8)
+            # draw the stone of the balckboard
+            img_blackboard = self._combine_stone(blackboard, stone)
+            # get the image in the roi of player
+            if self.debug:
+                print("player_mask: ", mask_player, mask_player.shape)
+            img_shot = cv2.bitwise_and(img_blackboard, img_blackboard, mask = mask_player)
+            # check collision
+            if np.sum(img_shot) > threshold:
+                print "stone hit"
+                stone.set_state('win')
+
+    def _img_sub(self, img1, img2):
+        """
+        return |img1 - img2|
+        """
+        shape_img1 = img1.shape
+        shape_img2 = img2.shape
+        assert(shape_img1 == shape_img2)
+        img1 = img1.reshape([-1])
+        img2 = img2.reshape([-1])
+        diff = np.array(map(self._uint8_abs_sub, img1, img2), dtype = 'uint8')
+        diff = diff.reshape(shape_img1)
+        return diff
+
+    def _uint8_abs_sub(self, v1, v2):
+        """
+        return |v1 - v2|
+        """
+        if v1 > v2:
+            return v1 - v2
+        else:
+            return v2 - v1
+
+    def _get_playermask(self, img, line):
+        """
+        only recognize the player under the line
+        pay attention that, the return mask should be size of img. not only the part under the line
+        """
+        fg = img
+        rows_bg, cols_bg, channels_bg = self.bg.shape
+        rows_fg, cols_fg, channels_fg = fg.shape
+        assert(cols_bg == cols_fg)
+        # only check the area under the line
+        bg = self.bg[rows_bg - line: rows_bg]
+        fg = fg[rows_bg - line: rows_fg]
+        # get the difference between the bg and fg
+        gray_bg = cv2.cvtColor(bg, cv2.COLOR_BGR2GRAY)
+        gray_fg = cv2.cvtColor(fg, cv2.COLOR_BGR2GRAY)
+        gray_diff = self._img_sub(gray_bg, gray_fg)
+        if self.debug:
+            print('line: ', line)
+            print('gray_fg: ', gray_fg)
+            print('gray_bg: ', gray_bg)
+            print('gray_diff:', gray_diff)
+        ret, mask = cv2.threshold(gray_diff, 30, 255, cv2.THRESH_BINARY)
+        # set the kernel for opening and closing
+        kernel = np.ones((5, 5), np.uint8)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        # put this part of mask into the img's mask
+        mask_img = np.zeros([rows_bg, cols_bg], dtype = 'uint8')
+        mask_img[rows_bg - line: rows_bg] = mask
+        return mask_img
 
     def _remove_stones(self):
         self.stones = [stone for stone in self.stones if stone.countdown != 0]
 
     def _combine_stones(self, img):
-        bg = self.bg
-        rows_bg, cols_bg, channels_bg = bg.size
+        bg = img
+        rows_bg, cols_bg, channels_bg = bg.shape
         for stone in self.stones:
-            fg = stone.get_img()
-            add_x, add_y = stone.get_address()
-            rows_fg, cols_fg, channels_fg = fg.size
-            mask_fg, mask_inv_fg = stone.get_mask()
-            if add_x + rows_fg <= rows_bg and add_y + cols_fg <= cols_bg and add_x > 0 and add_y > 0:
-                # stone is in the image, try to draw it out in region roi
-                roi = img[add_x: x + num_rows, add_y: add_y + num_cols]
-                # black out the roi region
-                bg_blacked = cv2.bitwise_and(roi, roi, mask = mask_inv_fg)
-                # get the stone in the fg(black out the region outside the stone)
-                fg_blacked = cv2.bitwise_and(fg, fg, mask = mask_fg)
-                # put the stone on the image
-                dst = cv2.add(bg_blacked, fg_blacked)
-                bg[add_x: x + rows_fg, add_y + cols_fg] = dst
-                self.bg = bg
-            else:
-                print "stone jump out the bound, if it is not dead, set it's state to Dead then process the next stone"
-                if stone.get_state() == 'live':
-                    stone.set_state('dead')
-                continue
+            bg = self._combine_stone(bg, stone)
+        return bg
+
+    def _combine_stone(self, bg, stone):
+        rows_bg, cols_bg, channels_bg = bg.shape
+        fg = stone.get_img()
+        add_x, add_y = stone.get_address()
+        rows_fg, cols_fg, channels_fg = fg.shape
+        mask_fg, mask_inv_fg = stone.get_mask()
+        if add_x + rows_fg <= rows_bg and add_y + cols_fg <= cols_bg and add_x >= 0 and add_y >= 0: # ?????the condition here is false, only for test
+            # stone is in the image, try to draw it out in region roi
+            roi = bg[add_x: add_x + rows_fg, add_y: add_y + cols_fg]
+            # black out the roi region with mask
+            bg_blacked = cv2.bitwise_and(roi, roi, mask = mask_inv_fg)
+            # get the stone in the fg(black out the region outside the stone)
+            fg_blacked = cv2.bitwise_and(fg, fg, mask = mask_fg)
+            # put the stone on the image
+            dst = cv2.add(bg_blacked, fg_blacked)
+            bg[add_x: add_x + rows_fg, add_y: add_y + cols_fg] = dst
+        else:
+            print "stone jump out the bound, if it is not dead, set it's state to Dead then process the next stone"
+            print("address of stone: ", (add_x, add_y), "size of the stone", stone.get_size())
+            print('boudary of the background:', (rows_bg, cols_bg))
+            if stone.get_state() == 'live':
+                stone.set_state('dead')
+        return bg
+
