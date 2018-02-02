@@ -31,6 +31,7 @@ class StoneFactory():
     def addObject(self, obj_dir):
         self._loadObject(obj_dir)
 
+    #TODO
     def create(self, ti):
         """
         according the last_t, ti and frq decide weather to creat a new stone or not
