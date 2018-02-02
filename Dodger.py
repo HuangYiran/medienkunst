@@ -3,20 +3,23 @@ import time
 import numpy as np
 from StoneFactory import StoneFactory
 from Stone import Stone
-from Falldown import Gravity
+from Falldown import * 
+from utils import *
 from matplotlib import pyplot as plt # because when i use cv2 to show the image, my laptor corrupt. so i use the plt instead
 
 class Dodger:
-    def __init__(self, cycle_length = 100, batch_size = 10):
+    def __init__(self, mode = 1, cycle_length = 100, batch_size = 10):
         """
         input:
             cycle_length: the number of frame, that will be skip, before the next img being processed
             batch_size: the number of frame, that will be processed each time
         """
+        self.mode = mode
         self.cycle_length = cycle_length 
         self.batch_size = batch_size
         self.cam = cv2.VideoCapture(0)
-        self.bg = self._bg_init() # background
+        #self.bg = self._bg_init() # background
+        self.bg, self.bg2 = bg_init(self.cam, self.mode)
         self.stones = []
         cv2.namedWindow("window")
         self.debug = True
@@ -34,37 +37,25 @@ class Dodger:
     def run(self):
         stage = 'prepare'
         cnt = 0
-        frames = [] # buffer to hold the frames 
+        frames = frames_init(self.cam, self.batch_size) # buffer to hold the frames 
         mirror = True # decide weather to display the video or not
         stone_fact = StoneFactory(5, './stones') # the factory to create stone
         #while True:
         for i in range(1000):
-            ret_val, img = self.cam.read() # get the current img from the camera
-            if not isinstance(img, np.ndarray):
-                print "img is NoneType, i also don't know why"
-                continue
-            if stage is 'prepare':
-                # save newest batch_size frames in the frames. and try to do some preparation if necessary
-                if cnt < self.cycle_length:
-                    # update the frames until reach the edge
-                    cnt = cnt+1
-                    frames.append(img)
-                    if len(frames) > self.batch_size:
-                        frames.pop(0)
-                else:
-                    # reaching the edge. set the stage to the next and initialize other attribs
-                    stage = 'running'
-                    cnt = 0
+            frames = frames_update(self.cam, frames, self.cycle_length)
 
             if mirror and stage is 'running':
                 # img = cv2.flip(img, 1) # ???
                 # create a stone if necessary
-                #stone = stone_fact.create(time.time)
+                # stone = stone_fact.create(time.time)
                 if self.debug:
                     print("current num of stones:", len(self.stones))
                     print "creating a new stone"
-                stone = stone_fact.create_abs()
-                if stone:
+                # todo
+                stone = stone_fact.create()
+                if isinstance(stone, 'list'):
+                    self.stones.extend(stone)
+                else:
                     self.stones.append(stone)
                 # move the stone if the state is not live, will decrease the countdown value
                 if self.debug:
@@ -78,7 +69,10 @@ class Dodger:
                 # check if the stones hit the something: the player or the floor. If so, change its state and img
                 if self.debug:
                     print "cheking the stone state"
-                self._check_hit(img) # only the stone with state live will be checked
+                # self._check_hit(img) # only the stone with state live will be checked
+                mask_player = get_player_mask(img, self.bg)
+                mask_player = change_coordinate(mask_player, self.bg2, self.mode)
+                check_hit(mask_player,  self.stones)
                 # when the sate of the stone is not live, start to count down the leben for these stones. remove the stone which countdown==0
                 if self.debug:
                     print "removing the dead stone"
@@ -86,7 +80,8 @@ class Dodger:
                 # add the stone to the image we get from the camera
                 if self.debug:
                     print "drawing the stone in the image"
-                img = self._combine_stones(img)
+                # img = self._combine_stones(img)
+                img = combine(bg, bg2, mask_player, self.stones, mode)
                 # display the img
                 if self.debug:
                     print "displaying the img"
