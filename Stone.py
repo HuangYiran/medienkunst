@@ -26,7 +26,7 @@ class Stone():
 
     def _create_mask(self):
         img2gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        ret, mask = cv2.threshold(img2gray, 240, 255, cv2.THRESH_BINARY_INV) # because the backgroud of the stone white is, we use THRES_BINARY_INV
+        ret, mask = cv2.threshold(img2gray, 240, 0, cv2.THRESH_BINARY_INV) # because the backgroud of the stone white is, we use THRES_BINARY_INV
         mask_inv = cv2.bitwise_not(mask)
         return mask, mask_inv
 
