@@ -35,7 +35,6 @@ class Dodger:
         self.bg = img
         
     def run(self):
-        stage = 'prepare'
         cnt = 0
         frames = frames_init(self.cam, self.batch_size) # buffer to hold the frames 
         mirror = True # decide weather to display the video or not
@@ -44,7 +43,7 @@ class Dodger:
         for i in range(1000):
             frames = frames_update(self.cam, frames, self.cycle_length)
 
-            if mirror and stage is 'running':
+            if mirror:
                 # img = cv2.flip(img, 1) # ???
                 # create a stone if necessary
                 # stone = stone_fact.create(time.time)
@@ -52,11 +51,13 @@ class Dodger:
                     print("current num of stones:", len(self.stones))
                     print "creating a new stone"
                 # todo
-                stone = stone_fact.create()
-                if isinstance(stone, 'list'):
+                stone = stone_fact.create(time.time())
+                if isinstance(stone, list):
                     self.stones.extend(stone)
                 else:
-                    self.stones.append(stone)
+                    if stone:
+                        print "--- add a stone to the list"
+                        self.stones.append(stone)
                 # move the stone if the state is not live, will decrease the countdown value
                 if self.debug:
                     print "moving the stone"
@@ -75,13 +76,13 @@ class Dodger:
                 check_hit(mask_player,  self.stones)
                 # when the sate of the stone is not live, start to count down the leben for these stones. remove the stone which countdown==0
                 if self.debug:
-                    print "removing the dead stone"
+                    print "if necessary, remove the dead stone"
                 self._remove_stones()
                 # add the stone to the image we get from the camera
                 if self.debug:
                     print "drawing the stone in the image"
                 # img = self._combine_stones(img)
-                img = combine(bg, bg2, mask_player, self.stones, mode)
+                img = combine(self.bg, self.bg2, img, mask_player, self.stones, self.mode)
                 # display the img
                 if self.debug:
                     print "displaying the img"
@@ -92,7 +93,6 @@ class Dodger:
                 #time.sleep(1)
             if cv2.waitKey(1) == 27:
                 break
-        stage = 'prepare'
         self.cam.release()
         cv2.destroyAllWindows()
 
