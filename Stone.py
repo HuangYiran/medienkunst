@@ -26,8 +26,8 @@ class Stone():
 
     def _create_mask(self):
         img2gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        ret, mask = cv2.threshold(img2gray, 240, 0, cv2.THRESH_BINARY_INV) # because the backgroud of the stone white is, we use THRES_BINARY_INV
-        mask_inv = cv2.bitwise_not(mask)
+        ret, mask_inv = cv2.threshold(img2gray, 250, 255, cv2.THRESH_BINARY) # because the backgroud of the stone white is, we use THRES_BINARY_INV
+        mask = cv2.bitwise_not(mask_inv)
         return mask, mask_inv
 
     def get_img(self):
@@ -35,6 +35,10 @@ class Stone():
 
     def get_mask(self):
         return self.mask, self.mask_inv
+
+    def set_mask(mask, mask_inv):
+        self.mask = mask
+        self.mask_inv = mask_inv
 
     def get_size(self):
         # rows, cols, channels
@@ -73,11 +77,15 @@ class Stone():
     def set_state(self, state):
         self.state = state
         if state == 'win':
-            # self.img = 'win'  set the img to a winner sign
-            pass
+            self.img = cv2.imread("./bilds/win.jpg") # set the img to a winner sign
+            self.img = cv2.resize(self.img, (100, 100))
         elif state == 'dead':
             # self.img = 'dead'  set the img to a loser sign
-            pass
+            print "++++++++++++++++dead++++++++++"
+            self.img = cv2.imread("./bilds/dead.jpg")
+            self.img = cv2.resize(self.img, (100, 100))
+            self.cor_x = self.cor_x - 20
+        self.mask, self.mask_inv = self._create_mask()
 
     def get_state(self):
         return self.state

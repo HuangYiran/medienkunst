@@ -2,6 +2,7 @@ import time
 import random
 import os
 import cv2
+import numpy as np
 from Falldown import Gravity
 from Stone import Stone
 
@@ -25,7 +26,11 @@ class StoneFactory():
         for (roots, dirs, files) in os.walk(obj_path):
             for item in files:
                 fi = obj_path + '/' + item
+                print fi
                 img = cv2.imread(fi)
+                if not isinstance(img, np.ndarray):
+                    print "fail to load this stone, just skip it"
+                    continue
                 self.objects.append(img)
 
     def addObject(self, obj_dir):
@@ -36,9 +41,9 @@ class StoneFactory():
         """
         according the last_t, ti and frq decide weather to creat a new stone or not
         """
-        if (ti - last_t) > self.frq:
+        if (ti - self.last_t) > self.frq:
             # update the clock
-            last_t = ti
+            self.last_t = ti
             # chose a stone from the objects randomly
             index = random.choice(range(self.num_objs))
             img = self.objects[index]
