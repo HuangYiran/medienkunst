@@ -1,3 +1,4 @@
+import time
 def bg_init(cam, mode = 1):
     """
     init the background of the game
@@ -10,9 +11,45 @@ def bg_init(cam, mode = 1):
         bg: type of ndarray 
         bg2: background for mode1
     """
+    stabil = False
+    color_threshold = (200, 200, 200)
+    percentage_threshold = 0.9
+    bg = None
+    if mode==1:
+        while not stabil:
+
+            frames = frames_init(camera)
+            x = frame[0].shape[0]
+            y = frame[0].shape[1]
+            area = x*y
+
+            t = np.vstack(frames)
+            masked = t<color_threshold
+            masked = masked.astype(int)
+            masked = np.prod(masked, 2)
+            print(masked.shape, area)
+
+            correct = np.count_nonzero(masked)
+
+            # if the correct points in frames is bigger than required percentage 
+            # we think its a proper background
+            if correct/area/10 > percentage_threshold:
+                stabil = True
+                b = np.zero(x,y)
+                for a in frames:
+                    b = a+b
+
+                bg = b/len(frames)
+
+        return bg
+
+            
+
+        
+
     pass
 
-def frames_init(cam, batch_size):
+def frames_init(cam, batch_size=10):
     """
     init the original frame list
     input:
@@ -21,7 +58,13 @@ def frames_init(cam, batch_size):
     output:
         frames: output the list of the frame
     """
-    pass
+    time_interval = 1
+    l = []
+    for i in batch_size:
+        _, img = cam.read()
+        l.append(img)
+        time.sleep(time_interval)
+    return l
 
 def get_player_mask(img, bg):
     """
@@ -32,18 +75,35 @@ def get_player_mask(img, bg):
     output:
         mask_player
     """
-    pass
+    color_threshold = (400, 400, 400) # threshold for squared matrix
+    diff_sqr = np.pow(img - bg, 2)
+    masked = diff_sqr<color_threshold
+    return masked
 
-def change_coordinate(mask_player, bg, mode):
+
+
+def change_coordinate(mask_player, bg2, mode=1):
     """
     change the coordinate of the player_mask if necessary
     input:
         player_mask: the mask of the player region in the bg1
-        bg: the background of the game in the mode 1
+        bg2: the background in the live game under mode 1
         mode: the mode of the game
     output:
         mask_player
     """
+    if mode == 1:
+        b_x = bg2.shape[0]
+        b_y = bg2.shape[1]
+        x = mask_player.shape[0]
+        y = mask_player.shape[1]
+
+        r = np.zero(b_x, b_y)
+        r[b_x-x:, :] = mask_player
+
+        return r
+
+
     pass
 
 def check_hit(mask_player, stones):
