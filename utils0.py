@@ -16,10 +16,40 @@ def bg_init(cam, mode = 1):
         bg2: background for mode1
     """
     print("--- initializing the background")
-    _, img = cam.read()
+    # init 10 frames
+    frames = []
+    for i in range(5):
+        _, img = cam.read()
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        frames.append(img)
+    # process the init, the target is to get a stable picture as the background, the method is use the var
+    while not check_stable(frames):
+        for i in range(5):
+            frames.pop()
+            _, img = cam.read()
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            frames.append(img)
+    img = frames[-1]
     print("background size: ", img.dtype, img.shape)
     print("+++ finish initializing the background")
     return img, img
+
+def check_stable(frames):
+    print "------- checking weather the stability of the bg"
+    threshold = 100
+    frs_list = []
+    for item in frames:
+        frs_list.append(item.reshape(-1))
+    frs_array = np.array(frs_list)
+    frs_array = frs_array.transpose()
+    print(frs_array.shape)
+    frs_std = list(map(np.std, frs_array))
+    frs_sum = sum(frs_std)
+    print frs_sum
+    if frs_sum > threshold:
+        return False
+    else:
+        return True
 
 def frames_init(cam, batch_size):
     """
@@ -38,16 +68,22 @@ def frames_init(cam, batch_size):
     print("+++ finish initializing the frames")
     return frames
 
-def get_player_mask(img, bg):
+def get_player_mask(img, bg, ratio = 0.5):
     """
     only recognize the player under the line
     pay attention that, the return mask should be size of img. not only the part under the line
     input:
         img: the image getting from the frames
         bg: the background of the game 
+        ratio: accuracy of the mask
     output:
         mask_player
    """
+    cv2.imshow('fg', img)
+    cv2.imshow('bg', bg)
+
+    #fg = cv2.resize(img, (int(ratio * img.shape[0]), int(ratio * img.shape[1])))
+    #bg = cv2.resize(bg, (int(ratio * bg.shape[0]), int(ratio * bg.shape[1])))
     fg = img
     rows_bg, cols_bg, channels_bg = bg.shape
     rows_fg, cols_fg, channels_fg = fg.shape
@@ -72,7 +108,11 @@ def get_player_mask(img, bg):
     # put this part of mask into the img's mask
     mask_img = np.zeros([rows_bg, cols_bg], dtype = 'uint8')
     mask_img[rows_bg - line: rows_bg] = mask
+
+    #mask_img = cv2.resize(mask_img, (img.shape[0], img.shape[1]))
+    cv2.imshow('mask', mask_img)
     return mask_img
+
 def img_sub(img1, img2):
         """
         return |img1 - img2|

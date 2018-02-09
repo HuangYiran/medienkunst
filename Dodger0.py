@@ -21,7 +21,14 @@ class Dodger:
         #self.bg = self._bg_init() # background
         self.bg, self.bg2 = bg_init(self.cam, self.mode)
         self.stones = []
-        cv2.namedWindow("window")
+        cv2.namedWindow("window", 0)
+        cv2.namedWindow("mask", 0)
+        cv2.namedWindow("bg", 0)
+        cv2.namedWindow("fg", 0)
+        cv2.resizeWindow("window", 640, 480)
+        cv2.resizeWindow("mask", 640, 480)
+        cv2.resizeWindow("fg", 640, 480)
+        cv2.resizeWindow("bg", 640, 480)
         self.debug = True
 
         assert(self.batch_size <= self.cycle_length) # i don't want to precess the null img in the first runing step.
@@ -49,7 +56,7 @@ class Dodger:
                 # stone = stone_fact.create(time.time)
                 if self.debug:
                     print("current num of stones:", len(self.stones))
-                    print "creating a new stone"
+                    print time.time()
                 # todo
                 stone = stone_fact.create(time.time())
                 if isinstance(stone, list):
@@ -61,31 +68,41 @@ class Dodger:
                 # move the stone if the state is not live, will decrease the countdown value
                 if self.debug:
                     print "moving the stone"
+                    print time.time()
                 for stone in self.stones:
                     stone.run()
                 # process the frame to get a representative
                 if self.debug:
                     print "prepare the img"
+                    print time.time()
                 img = self._prepare_img(frames)
                 # check if the stones hit the something: the player or the floor. If so, change its state and img
                 if self.debug:
-                    print "cheking the stone state"
+                    print "get the ask of the image: get_player_mask"
+                    print time.time()
                 # self._check_hit(img) # only the stone with state live will be checked
                 mask_player = get_player_mask(img, self.bg)
+                if self.debug:
+                    print "checking the stone state: check_hit"
+                    print time.time()
                 mask_player = change_coordinate(mask_player, self.bg2, self.mode)
                 check_hit(mask_player,  self.stones)
                 # when the sate of the stone is not live, start to count down the leben for these stones. remove the stone which countdown==0
                 if self.debug:
                     print "if necessary, remove the dead stone"
+                    print time.time()
                 self._remove_stones()
                 # add the stone to the image we get from the camera
                 if self.debug:
                     print "drawing the stone in the image"
+                    print time.time()
                 # img = self._combine_stones(img)
                 img = combine(self.bg, self.bg2, img, mask_player, self.stones, self.mode)
                 # display the img
+                img = cv2.flip(img, flipCode = 1)
                 if self.debug:
                     print "displaying the img"
+                    print time.time()
                 cv2.imshow('window', img)
                 #plt.imshow(img)
                 #plt.show()
