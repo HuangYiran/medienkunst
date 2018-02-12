@@ -58,7 +58,7 @@ class StoneFactory():
     def create_abs(self):
         # chose a stone from the objects randomly
         index = random.choice(range(self.num_objs))
-        img = self.objects[index]
+        img = self.objects[1]
         # here we need a initial coordinate and mode
         init_x = 10
         init_y = 0

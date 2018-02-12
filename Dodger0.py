@@ -18,15 +18,16 @@ class Dodger:
         self.cycle_length = cycle_length 
         self.batch_size = batch_size
         self.cam = cv2.VideoCapture(0)
+        self.bs = cv2.createBackgroundSubtractorKNN(detectShadows = False)
         #self.bg = self._bg_init() # background
         self.bg, self.bg2 = bg_init(self.cam, self.mode)
         self.stones = []
         cv2.namedWindow("window", 0)
         cv2.namedWindow("mask", 0)
         cv2.namedWindow("bg", 0)
-        cv2.namedWindow("fg", 0)
+        cv2.namedWindow("fg")
         cv2.resizeWindow("window", 640, 480)
-        cv2.resizeWindow("mask", 640, 480)
+        #cv2.resizeWindow("mask", 640, 480)
         cv2.resizeWindow("fg", 640, 480)
         cv2.resizeWindow("bg", 640, 480)
         self.debug = True
@@ -46,8 +47,8 @@ class Dodger:
         frames = frames_init(self.cam, self.batch_size) # buffer to hold the frames 
         mirror = True # decide weather to display the video or not
         stone_fact = StoneFactory(5, './stones') # the factory to create stone
-        #while True:
-        for i in range(1000):
+        while True:
+        #for i in range(1000):
             frames = frames_update(self.cam, frames, self.cycle_length)
 
             if mirror:
@@ -81,11 +82,13 @@ class Dodger:
                     print "get the ask of the image: get_player_mask"
                     print time.time()
                 # self._check_hit(img) # only the stone with state live will be checked
-                mask_player = get_player_mask(img, self.bg)
+                mask_player = get_player_mask(img, self.bs)
+                #mask_player = self.bs.apply(img)
+                cv2.imshow('mask', mask_player)
                 if self.debug:
                     print "checking the stone state: check_hit"
                     print time.time()
-                mask_player = change_coordinate(mask_player, self.bg2, self.mode)
+                #mask_player = change_coordinate(mask_player, self.bg2, self.mode)
                 check_hit(mask_player,  self.stones)
                 # when the sate of the stone is not live, start to count down the leben for these stones. remove the stone which countdown==0
                 if self.debug:

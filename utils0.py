@@ -18,18 +18,16 @@ def bg_init(cam, mode = 1):
     print("--- initializing the background")
     # init 10 frames
     frames = []
-    for i in range(5):
+    for i in range(500):
         _, img = cam.read()
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        frames.append(img)
+    _, img = cam.read()
     # process the init, the target is to get a stable picture as the background, the method is use the var
-    while not check_stable(frames):
-        for i in range(5):
-            frames.pop()
-            _, img = cam.read()
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            frames.append(img)
-    img = frames[-1]
+    #while not check_stable(frames):
+    #    for i in range(5):
+    #        frames.pop()
+    #        _, img = cam.read()
+    #        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    #        frames.append(img)
     print("background size: ", img.dtype, img.shape)
     print("+++ finish initializing the background")
     return img, img
@@ -68,7 +66,7 @@ def frames_init(cam, batch_size):
     print("+++ finish initializing the frames")
     return frames
 
-def get_player_mask(img, bg, ratio = 0.5):
+def get_player_mask(img, bs, ratio = 0.5):
     """
     only recognize the player under the line
     pay attention that, the return mask should be size of img. not only the part under the line
@@ -79,39 +77,21 @@ def get_player_mask(img, bg, ratio = 0.5):
     output:
         mask_player
    """
-    cv2.imshow('fg', img)
-    cv2.imshow('bg', bg)
-
-    #fg = cv2.resize(img, (int(ratio * img.shape[0]), int(ratio * img.shape[1])))
-    #bg = cv2.resize(bg, (int(ratio * bg.shape[0]), int(ratio * bg.shape[1])))
-    fg = img
-    rows_bg, cols_bg, channels_bg = bg.shape
-    rows_fg, cols_fg, channels_fg = fg.shape
-    line = int(round(0.5 * rows_bg))
-    assert(cols_bg == cols_fg)
-    # only check the area under the line
-    bg = bg[rows_bg - line: rows_bg]
-    fg = fg[rows_bg - line: rows_fg]
+    mask_player = bs.apply(img)
+    rows_mask, cols_mask = mask_player.shape
+    line = int(round(0.5 * rows_mask))
+    mask_player[:line] = 0
     # get the difference between the bg and fg
-    gray_bg = cv2.cvtColor(bg, cv2.COLOR_BGR2GRAY)
-    gray_fg = cv2.cvtColor(fg, cv2.COLOR_BGR2GRAY)
-    gray_diff = img_sub(gray_bg, gray_fg)
-    # print('line: ', line)
-    # print('gray_fg: ', gray_fg)
-    # print('gray_bg: ', gray_bg)
-    # print('gray_diff:', gray_diff)
-    ret, mask = cv2.threshold(gray_diff, 30, 255, cv2.THRESH_BINARY)
-    # set the kernel for opening and closing
+    """
     kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    # put this part of mask into the img's mask
-    mask_img = np.zeros([rows_bg, cols_bg], dtype = 'uint8')
-    mask_img[rows_bg - line: rows_bg] = mask
+    mask_player = cv2.morphologyEx(mask_player, cv2.MORPH_OPEN, kernel)
+    mask_player = cv2.morphologyEx(mask_player, cv2.MORPH_CLOSE, kernel)
+    """
+    th = cv2.threshold(mask_player.copy(), 244, 255, cv2.THRESH_BINARY)[1]
+    th = cv2.erode(th, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
+    dilated = cv2.dilate(th, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (8, 3)), iterations=2)
 
-    #mask_img = cv2.resize(mask_img, (img.shape[0], img.shape[1]))
-    cv2.imshow('mask', mask_img)
-    return mask_img
+    return dilated
 
 def img_sub(img1, img2):
         """
@@ -169,7 +149,7 @@ def check_hit(mask_player, stones):
             mask_fg[add_x: add_x + rows_stone, add_y: add_y + cols_stone] = mask_stone
             # use bitwise_and to get the intersection between two mask 
             intersection = cv2.bitwise_and(mask_fg, mask_player)
-            if np.sum(intersection) >= 10: 
+            if np.sum(intersection) >= 30: 
                 # if the sum of intersection larger as 30, we say that the stone hit the player
                 stone.set_state('win')
         else:

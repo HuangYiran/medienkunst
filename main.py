@@ -2,7 +2,7 @@ import Dodger1
 import Dodger0
 
 def main():
-    mode = 1
+    mode = 0
     if mode == 1:
         dodger = Dodger1()
     else:
