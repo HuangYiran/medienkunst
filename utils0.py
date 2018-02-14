@@ -91,6 +91,25 @@ def get_player_mask(img, bs, ratio = 0.5):
     th = cv2.erode(th, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)), iterations=2)
     dilated = cv2.dilate(th, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (8, 3)), iterations=2)
 
+    _, contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    """
+    only can be used in the real test. 
+    x, y, w, h = 0,0,0,0
+    for c in contours:
+        x1, y1, w1, h1 = cv2.boundingRect(c)
+        area = cv2.contourArea(c)
+        print area
+        if y1+h1>y+h and area > 100:
+            x = x1
+            y = y1
+            w = w1
+            h = h1
+    mask_contour = np.zeros(dilated.shape, dtype = 'uint8')
+    mask_contour[x:x+w,y:y+h] = 255
+    dilated = cv2.bitwise_and(dilated, dilated, mask = mask_contour)
+    """
+
     return dilated
 
 def img_sub(img1, img2):
@@ -220,5 +239,4 @@ def frames_update(cam, frames, cycle_length):
     frames.pop(0)
     print("+++ finishing updating the frame")
     return frames
-
 
