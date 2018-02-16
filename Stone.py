@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 class Stone():
     def __init__(self, init_img, init_x, init_y, m_mode, init_scale = 1, init_whilr = 0, countdown = 10):
@@ -14,6 +15,7 @@ class Stone():
         """
         self.img = init_img
         self.img = cv2.resize(self.img, (100, 100))
+        # mask 0 or 255
         self.mask, self.mask_inv = self._create_mask()
         # set the img to a fix size
         self.cor_x = init_x
@@ -23,12 +25,83 @@ class Stone():
         self.m_modes = [m_mode]
         self.state = 'live'
         self.countdown = countdown
+	self.masked_img = self._calc_masked_img()
+	self.bool_mask_3d = self._calc_bool_mask_3d()
+	self.bool_mask_inv_3d = (self.bool_mask_3d-1)*-1
+
+        # mask will be changed with time
+        self.mask_bg = None
+
+    def _calc_masked_img(self):
+	m = self.img.shape[0]
+        n = self.img.shape[1]
+	r = self.img[:,:,0:1].reshape(m,n)
+	g = self.img[:,:,1:2].reshape(m,n)
+	b = self.img[:,:,2:3].reshape(m,n)
+
+	r *= self.mask
+	g *= self.mask
+	b *= self.mask
+	result = self.img
+	result[:,:,0:1] = r.reshape(m,n,1)
+	result[:,:,1:2] = g.reshape(m,n,1)
+	result[:,:,2:3] = b.reshape(m,n,1)
+	return result
 
     def _create_mask(self):
         img2gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
         ret, mask_inv = cv2.threshold(img2gray, 250, 255, cv2.THRESH_BINARY) # because the backgroud of the stone white is, we use THRES_BINARY_INV
         mask = cv2.bitwise_not(mask_inv)
         return mask, mask_inv
+
+    def _calc_bool_mask_3d(self):
+	t = self.mask/255
+	t = np.repeat(t, 3).reshape(100,100,3)
+	return t
+
+    def _hit_wall(self, h,w,x,y):
+	if x<0 or y<0 or x+100>h or y+100>w:
+	    return True
+	else:
+	    return False
+
+    def draw_in_bg(self, bg2, player_mask):
+	self.run()
+	h,w,_ = bg2.shape
+	x,y = self.get_address()
+	if self._hit_wall(h,w,y,x):
+	    self.state = 'dead'
+	    
+	else:
+	    
+            self.check_hit(player_mask, bg2)
+	    bg2[y:y+100,x:x+100,:] *= self.bool_mask_inv_3d
+	    bg2[y:y+100,x:x+100,:] += self.masked_img
+	    
+	return bg2
+
+    def _get_mask_bg(self, bg2):
+        # calc mask of stone in the backgroud
+        h,w,_ = bg2.shape
+        x,y = self.get_address()
+        mask_bg = np.zeros((h,w))
+        #print(x,y)
+        #print(self.mask.shape,mask_bg[y:y+100,x:x+100].shape )
+        mask_bg[y:y+100,x:x+100] = self.mask/255
+        return mask_bg
+        
+    def check_hit(self, player_mask, bg2):
+        # check whether stone hits the player
+        mask_bg = self._get_mask_bg(bg2)
+        mask_sum = mask_bg + player_mask
+        # calc the same area between stone mask and player mask
+        s = np.sum(mask_sum>1)
+        if s>15:
+            self.state='win'
+            return True
+        else:
+            return False
+
 
     def get_img(self):
         return self.img
