@@ -2,11 +2,11 @@ import time
 import random
 import os
 import cv2
-from Falldown import Gravity
+from Falldown import Gravity, Fly
 from Stone import Stone
 
 class StoneFactory():
-    def __init__(self, w, obj_dir='./stones', create_probability=0.05, frq=0.5):
+    def __init__(self, w, obj_dir='./stones', create_probability=0.2, frq=0.5):
         """
         frq: is the frequence of creating the stone, every frq second create a stone
         img_path: the dir of the image object
@@ -40,14 +40,14 @@ class StoneFactory():
         according the last_t, ti and frq decide weather to creat a new stone or not
         """
 
-        if random.random() > self.probability:
+        if random.random() < self.probability:
 
             init_x, init_y = self.create_init_coordinate()
             # chose a stone from the objects randomly
             index = random.choice(range(self.num_objs))
             img = self.objects[index]
             # here we need a initial coordinate and mode
-            init_m = Gravity()
+            init_m = Fly()
             stone = Stone(img, init_x, init_y, init_m)
             return stone
         return None 
@@ -64,7 +64,8 @@ class StoneFactory():
         return stone
 
     def create_init_coordinate(self):
-        x = random.random()*self.width_bg
+        print(self.width_bg)
+        x = random.random()*(self.width_bg-100)
         y = 0
         return x,y
 

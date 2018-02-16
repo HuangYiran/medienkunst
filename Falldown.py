@@ -1,5 +1,6 @@
 import time
 import cv2
+import random
 
 class Push(object):
     def __init__(self, init_sx, init_sy, init_ax, init_ay):
@@ -41,5 +42,12 @@ class Push(object):
 
 class Gravity(Push):
     def __init__(self):
-        super(Gravity, self).__init__(0, 0, 9.8, 0)
+
+        super(Gravity, self).__init__(0, 0, 0, 9.8)
+
+
+class Fly(Push):
+    def __init__(self):
+        s = (random.random()-0.5)*9.8*2
+        super(Fly, self).__init__(0, 0, s, 9.8)
 

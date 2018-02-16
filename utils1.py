@@ -2,7 +2,8 @@ import time
 import numpy as np
 from six.moves import xrange
 import cv2
-def bg_init(cam, mode = 1):
+from StoneFactory import StoneFactory
+def bg_init(cam, img_q=None, frames_l=5, delay=2):
     """
     init the background of the game
     input:
@@ -15,39 +16,69 @@ def bg_init(cam, mode = 1):
         bg2: background for mode1
     """
     stabil = False
-    #color_threshold = (200, 200, 200)
-    color_threshold = (0, 0, 0)
-    percentage_threshold = 0.9
+    color_threshold = (10, 10, 10)
+    percentage_threshold = 0.999
     bg = None
-    if mode==1:
-        while not stabil:
+    bg_cans = []
+    
+    frames = frames_init(cam, img_q, frames_l, delay)
+    # print(frames[0])
+    x, y, z = frames[0].shape
+    area = x*y
 
-            frames = frames_init(cam)
-            x = frames[0].shape[0]
-            y = frames[0].shape[1]
-            area = x*y
+    mask_r = np.zeros((x, y))
+    bg = np.zeros((x, y, z))
 
-            t = np.vstack(frames)
-            masked = t>color_threshold
-            masked = masked.astype(int)
-            #masked = np.prod(masked, 2)
+    while not stabil:
+
+        t = np.vstack(frames)
+        l = len(frames)
+        t = t.reshape(l, x, y, z)
+        t = 1.0*np.sum(t, axis=0)/l
+        # print(t.shape)
+        if len(bg_cans) > 0:
+            pre = bg_cans[-1]
+            diff = t-pre
+
+            diff = np.power(diff, 2)
+            # print(diff[0][0])
+            # print(diff.shape)
+            mask = diff<color_threshold
+            mask = mask.astype(int)
+            mask = np.prod(mask, 2)
+            new_mask = mask-mask_r
+            # print(new_mask)
+            addition_mask = new_mask==1
+            
+            addition_mask = addition_mask.astype(int)
+            t_mask = addition_mask
+            #print(np.sum(addition_mask*mask_r))
+            addition_mask = np.repeat(addition_mask.astype(int),3).reshape(x,y,z)
+            addition_img = t*addition_mask
+            mask_r += t_mask
+            mask_r = mask_r.astype(int)
+            bg = bg+addition_img
+            bg = bg.astype('uint8')
             #print(masked.shape, area)
 
-            correct = np.count_nonzero(masked)
-            #print(correct)
+            correct = 1.0*np.count_nonzero(mask_r)/area
+            print(correct)
 
             # if the correct points in frames is bigger than required percentage 
             # we think its a proper background
-            if correct/area/10 > percentage_threshold:
+            if correct > percentage_threshold:
                 stabil = True
-                b = np.zeros((x,y,3))
-                for a in frames:
-                    b = a+b
+                return bg
+            bg_cans[-1] = t
+        else:
+            bg_cans.append(t)
+        frames = frames_init(cam, img_q, frames_l, delay)
 
-                bg = b/len(frames)
 
-        print('background init succeed')
-        return bg
+        cv2.imwrite('./test/bg_init.png', bg)
+
+    print('background init succeed')
+    return bg
 
             
 
@@ -55,7 +86,7 @@ def bg_init(cam, mode = 1):
 
     pass
 
-def frames_init(cam, batch_size=4, time_interval=1):
+def frames_init(cam, img_q, batch_size=3, time_interval=0.1):
     """
     init the original frame list
     input:
@@ -66,8 +97,14 @@ def frames_init(cam, batch_size=4, time_interval=1):
     """
     l = []
     for i in xrange(batch_size):
-        _, img = cam.read()
-        l.append(img)
+        if not img_q.empty():
+            # print(image)
+            image = img_q.get()
+            l.append(image)
+        else:
+            _, img = cam.read()
+	    img = cv2.flip(img,1)
+            l.append(img)
         time.sleep(time_interval)
     return l
 
@@ -88,115 +125,10 @@ def get_player_mask(img, bg):
 
 
 
-def change_coordinate_player(mask_player ,img , bg2, mode=1):
-    """
-    change the coordinate of the player_mask if necessary
-    input:
-        player_mask: the mask of the player region in the bg1
-        bg2: the background in the live game under mode 1
-        mode: the mode of the game
-    output:
-        mask_player
-    """
-    if mode == 1:
-        b_x = bg2.shape[0]
-        b_y = bg2.shape[1]
-        b_z = bg2.shape[2]
+def _remove_stones(stones):
+    stones = [stone for stone in stones if stone.countdown != 0]
 
-        x = img.shape[0]
-        y = img.shape[1]
-        z = img.shape[2]
-
-
-        mask = np.zeros((b_x, b_y))
-        img_global = np.zeros((b_x,b_y,b_z))
-        mask[b_x-x:,b_y-y:] = mask_player
-        img_global[b_x-x:,b_y-y:,] = img
-
-        return mask, img_global
-
-
-
-def change_coordinate_stone_and_collision_test(stone, bg2, mode=1):
-    hit_wall = False
-    bg_h = bg2.shape[0]
-    bg_w = bg2.shape[1]
-    
-    if mode == 1:
-        stone_mask,  _ = stone.get_mask()
-
-        cv2.imwrite('./test/stone_mask1.png', stone_mask)
-
-        print('here')
-        stone_x_dist, stone_y_dist = stone.get_address()
-        stone_h = stone_mask.shape[0]
-        stone_w = stone_mask.shape[1]
-
-        mask_stone_bg = np.zeros((bg_h, bg_w))
-        stone_img_bg = np.zeros((bg_h, bg_w, 3))
-        
-        # hit the wall
-        if stone_x_dist<0 or stone_y_dist<0 or stone_x_dist+stone_h>bg_h or stone_y_dist+stone_w>bg_w:
-            hit_wall = True
-            mask_stone_bg = None
-            stone_img = None
-        else:
-            hit_wall = False
-            mask_stone_bg[stone_x_dist:stone_x_dist+stone_h, stone_y_dist:stone_y_dist+stone_w] = stone_mask
-            stone_img = stone.get_img()
-            stone_img = _get_img_by_mask(stone_img,stone_mask)
-            stone_img_bg[stone_x_dist:stone_x_dist+stone_h, stone_y_dist:stone_y_dist+stone_w,:] = stone_img
-    return mask_stone_bg, stone_img_bg, hit_wall
-
-        
-
-def check_hit(mask_player_bg, stones, bg2):
-    """
-    check if the stone hit the player, if so, change the state of the stone
-    it:
-        mask_player: the mask of the player
-        stones: the list of stone
-    """
-
-    bg_h = bg2.shape[0]
-    bg_w = bg2.shape[1]
-    for stone in stones:
-        # only process the stone with the state 'live'
-        if stone.get_state() != 'live':
-            continue
-        mask_stone_bg,stone_img, hit_wall = change_coordinate_stone_and_collision_test(stone, bg2)
-        if not hit_wall:
-            result = mask_player_bg*mask_stone_bg
-            if np.sum(result)>15:
-                stone.set_state('win')
-            else:
-                pass
-        else:
-            stone.set_state('dead')
-
-
-
-
-        
-
-def _get_img_by_mask(img, mask):
-        
-        r = img[:,:,0:1].reshape(img.shape[0],img.shape[1])
-        g = img[:,:,1:2].reshape(img.shape[0],img.shape[1])
-        b = img[:,:,2:3].reshape(img.shape[0],img.shape[1])
-        
-        r *= mask
-        g *= mask
-        b *= mask
-
-        return np.hstack([r,g,b]).reshape(img.shape[0],img.shape[1],3)
-
-def _delete_img_by_mask(img, mask):
-    mask = (mask-1)*-1
-    return _get_img_by_mask(img, mask)
-
-
-def combine(img, bg2, mask_player_local, stones):
+def combine(img, bg2, player_mask, stones):
     """
     input:
         img: the imgage getting from the frames
@@ -207,51 +139,61 @@ def combine(img, bg2, mask_player_local, stones):
     output:
         img
     """
-    def _remove_stones(stones):
-        stones = [stone for stone in stones if stone.countdown != 0]
-
-    def _inner_process(bg, img, mask):
-        # img and mask are global
-        bg = _delete_img_by_mask(bg, mask)
-        img = _get_img_by_mask(img, mask)
-        return bg+img
-        
+       
     result = bg2
-
-    if mask_player_local is not None:
-        # combine player
-        player_mask, player_img = change_coordinate_player(mask_player_local, img, bg2)
-        result = _inner_process(bg2, player_img, player_mask)
 
 
     # combine stone
-    stone_mask = None
-    stone_img = None
     for stone in stones:
-        stone_mask,stone_img, hit_wall = change_coordinate_stone_and_collision_test(stone, bg2)
-        if not hit_wall:
-            print(stone_mask)
-            cv2.imwrite('./test/stone_mask.png', stone_mask)
- 
-            result = _inner_process(bg2, stone_img, stone_mask)
+        result = stone.draw_in_bg(result, player_mask)
     _remove_stones(stones)
 
+    #cv2.imwrite('./test/stone_mask.png', result)
     return result
 
-    pass
 
-def frames_update(cam, frames, time_delay=0.1):
+def frames_update(frames, img):
     """
     update the img in the frame list
     input:
         cam: instance of the camera
         frames: frame list to store the frame
         cycle_length: frequece to update the frame output: frames """ 
-    time.sleep(time_delay)
-    ret_val, img = cam.read() 
-    # reaching the edge. set the stage to the next and initialize other attribs
+    
     frames.append(img)
     frames.pop(0)
     return frames
 
+def get_avg_img(frames):
+    x, y, z = frames[0].shape
+    t = np.vstack(frames)
+    l = len(frames)
+    t = t.reshape(l, x, y, z)
+    t = 1.0*np.sum(t, axis=0)/l
+    return t
 
+def get_diff_mask(frames):
+    if len(frames)>2:
+	
+	threshold = (3000,3000,3000)
+	m = int(len(frames)/2)
+	frame1 = get_avg_img(frames[:m])
+	frame2 = get_avg_img(frames[m:])
+	diff = 1.0*frame2-1.0*frame1
+	m,n,_ = diff.shape
+	diff = np.power(diff, 2)
+	mask = diff>threshold
+	t1 = mask[:,:,0:1].astype(int)
+	t2 = mask[:,:,1:2].astype(int)
+	t3 = mask[:,:,2:3].astype(int)
+	mask = t1+t2+t3
+	mask = ((mask>0).reshape(m,n)*255).astype('uint8')
+	
+	return mask
+
+if __name__ == '__main__':
+            
+    #cv2.imwrite('./test/stone_mask1.png', stone_img)
+
+    cam = cv2.VideoCapture(0)
+    bg_init(cam)
