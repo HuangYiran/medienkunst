@@ -2,7 +2,8 @@ import cv2
 import numpy as np
 
 class Stone():
-    def __init__(self, init_img, init_x, init_y, m_mode, init_scale = 1, init_whilr = 0, countdown = 10):
+    img_l = 25
+    def __init__(self, init_img, init_x, init_y, m_mode, init_scale = 1, init_whilr = 0, countdown = 3):
         """
         img: numpy.array, the initial image of the stone
         cor_x: the current x coordinate of the stone, left up side
@@ -14,7 +15,8 @@ class Stone():
         countdown: when the state of the stone changed to dead or win, start to count down. when countdown == 0, the stone will be removed from the stones list.
         """
         self.img = init_img
-        self.img = cv2.resize(self.img, (100, 100))
+	self.img_l = Stone.img_l
+        self.img = cv2.resize(self.img, (self.img_l, self.img_l))
         # mask 0 or 255
         self.mask, self.mask_inv = self._create_mask()
         # set the img to a fix size
@@ -56,11 +58,11 @@ class Stone():
 
     def _calc_bool_mask_3d(self):
 	t = self.mask/255
-	t = np.repeat(t, 3).reshape(100,100,3)
+	t = np.repeat(t, 3).reshape(self.img_l,self.img_l,3)
 	return t
 
     def _hit_wall(self, h,w,x,y):
-	if x<0 or y<0 or x+100>h or y+100>w:
+	if x<0 or y<0 or x+self.img_l>h or y+self.img_l>w:
 	    return True
 	else:
 	    return False
@@ -70,13 +72,15 @@ class Stone():
 	h,w,_ = bg2.shape
 	x,y = self.get_address()
 	if self._hit_wall(h,w,y,x):
-	    self.state = 'dead'
+	    if self.state == 'live':
+
+	        self.set_state('dead')
 	    
 	else:
 	    
             self.check_hit(player_mask, bg2)
-	    bg2[y:y+100,x:x+100,:] *= self.bool_mask_inv_3d
-	    bg2[y:y+100,x:x+100,:] += self.masked_img
+	    bg2[y:y+self.img_l,x:x+self.img_l,:] *= self.bool_mask_inv_3d
+	    bg2[y:y+self.img_l,x:x+self.img_l,:] += self.masked_img
 	    
 	return bg2
 
@@ -86,8 +90,8 @@ class Stone():
         x,y = self.get_address()
         mask_bg = np.zeros((h,w))
         #print(x,y)
-        #print(self.mask.shape,mask_bg[y:y+100,x:x+100].shape )
-        mask_bg[y:y+100,x:x+100] = self.mask/255
+        #print(self.mask.shape,mask_bg[y:y+self.img_l,x:x+self.img_l].shape )
+        mask_bg[y:y+self.img_l,x:x+self.img_l] = self.mask/255
         return mask_bg
         
     def check_hit(self, player_mask, bg2):
@@ -97,7 +101,8 @@ class Stone():
         # calc the same area between stone mask and player mask
         s = np.sum(mask_sum>1)
         if s>15:
-            self.state='win'
+	    if self.state == 'live':
+	        self.set_state('win')
             return True
         else:
             return False
@@ -151,12 +156,12 @@ class Stone():
         self.state = state
         if state == 'win':
             self.img = cv2.imread("./bilds/win.jpg") # set the img to a winner sign
-            self.img = cv2.resize(self.img, (100, 100))
+            self.img = cv2.resize(self.img, (self.img_l, self.img_l))
         elif state == 'dead':
             # self.img = 'dead'  set the img to a loser sign
             print "++++++++++++++++dead++++++++++"
-            self.img = cv2.imread("./bilds/dead.jpg")
-            self.img = cv2.resize(self.img, (100, 100))
+            self.img = cv2.imread("./bilds/dead.jpeg")
+            self.img = cv2.resize(self.img, (self.img_l, self.img_l))
             self.cor_x = self.cor_x - 20
         self.mask, self.mask_inv = self._create_mask()
 
@@ -169,3 +174,6 @@ class Stone():
                 mode.run(self)
         else:
             self.countdown = self.countdown - 1
+    @classmethod
+    def get_img_length(self):
+	return Stone.img_l

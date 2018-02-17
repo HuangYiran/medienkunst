@@ -15,7 +15,8 @@ class Player:
         self.mask = None
         self.bg2_y, self.bg2_x, _ = bg2.shape
         self.img_y, self.img_x, _ = img.shape
-        self.x_ratio = 1.0*self.bg2_x/self.img_x
+        self.x_ratio = (1.0*self.bg2_x/self.img_x-1)
+
         self.y_ratio = 1.0*self.bg2_y/self.img_y
 	self.center = None
 	self.real_center = None
@@ -176,7 +177,7 @@ class Player:
 	return mask
 
 
-    def _get_player_pose_img(self, mask, theta=0.1):
+    def _get_player_pose_img(self, mask, theta=0.3):
         # TODO check argmax
 	sum_h = np.sum(mask, axis=1)
 	sum_w = np.sum(mask, axis=0)
@@ -191,6 +192,7 @@ class Player:
         self.player_img_pose = (x, y)
 
     def _get_img(self, img, mask):
+        # return the whole img
 	a,b = mask.shape
 	m = np.repeat(mask,3).reshape(a,b,3)
         #x, y = self.player_img_pose
@@ -202,12 +204,15 @@ class Player:
         # img pose in bg2
         x, y = self.player_img_pose
 	
-        img_x_bg = x*self.x_ratio+x
+        img_x_bg = x*self.x_ratio
 	if img_x_bg > (self.bg2_x-self.img_x):
 	    img_x_bg = self.bg2_x-self.img_x
         img_y_bg = self.bg2_y-self.img_y
 	#print self.bg2_y,self.img_y
-	self.img_pose = (img_x_bg, img_y_bg)
+
+	self.img_pose = (int(img_x_bg), int(img_y_bg))
+        print(x,y)
+        print(self.img_pose)
         return img_x_bg, img_y_bg
 
     def draw_bg(self, bg, bg2, img):
@@ -251,4 +256,6 @@ class Player:
 	    return gm
 
 	    
+    def _set_player_pose(self, x, y):
+        self.player_img_pose = (x,y)
 

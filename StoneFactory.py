@@ -65,7 +65,8 @@ class StoneFactory():
 
     def create_init_coordinate(self):
         print(self.width_bg)
-        x = random.random()*(self.width_bg-100)
+	l = Stone.get_img_length()
+        x = random.random()*(self.width_bg-l)
         y = 0
         return x,y
 

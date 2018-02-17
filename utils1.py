@@ -86,7 +86,7 @@ def bg_init(cam, img_q=None, frames_l=5, delay=2):
 
     pass
 
-def frames_init(cam, img_q, batch_size=3, time_interval=0.1):
+def frames_init(cam, img_q, resize=0.5, batch_size=3, time_interval=0.1):
     """
     init the original frame list
     input:
@@ -100,10 +100,14 @@ def frames_init(cam, img_q, batch_size=3, time_interval=0.1):
         if not img_q.empty():
             # print(image)
             image = img_q.get()
+	    print image.shape
             l.append(image)
         else:
             _, img = cam.read()
+	    if resize != 0:
+	        img = cv2.resize(img,None,fx=resize, fy=resize)
 	    img = cv2.flip(img,1)
+	    print img.shape
             l.append(img)
         time.sleep(time_interval)
     return l
@@ -127,6 +131,7 @@ def get_player_mask(img, bg):
 
 def _remove_stones(stones):
     stones = [stone for stone in stones if stone.countdown != 0]
+    return stones
 
 def combine(img, bg2, player_mask, stones):
     """
@@ -146,10 +151,10 @@ def combine(img, bg2, player_mask, stones):
     # combine stone
     for stone in stones:
         result = stone.draw_in_bg(result, player_mask)
-    _remove_stones(stones)
+    stones = _remove_stones(stones)
 
     #cv2.imwrite('./test/stone_mask.png', result)
-    return result
+    return result, stones
 
 
 def frames_update(frames, img):
