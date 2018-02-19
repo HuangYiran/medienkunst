@@ -3,11 +3,11 @@ import random
 import os
 import cv2
 import numpy as np
-from Falldown import Gravity
+from Falldown import Gravity, Fly
 from Stone import Stone
 
 class StoneFactory():
-    def __init__(self, frq, obj_dir):
+    def __init__(self, frq, obj_dir, width_bg):
         """
         frq: is the frequence of creating the stone, every frq second create a stone
         img_path: the dir of the image object
@@ -18,6 +18,7 @@ class StoneFactory():
         self.objects = []
         self._loadObject(obj_dir)
         self.num_objs = len(self.objects)
+        self.width_bg = width_bg
 
     def _loadObject(self, obj_path):
         """
@@ -37,10 +38,26 @@ class StoneFactory():
         self._loadObject(obj_dir)
 
     #TODO
-    def create(self, ti):
+    def create(self ):
         """
         according the last_t, ti and frq decide weather to creat a new stone or not
         """
+
+        if random.random() < 0.2:
+
+            init_x, init_y = self.create_init_coordinate()
+            # chose a stone from the objects randomly
+            index = random.choice(range(self.num_objs))
+            img = self.objects[index]
+            # here we need a initial coordinate and mode
+            init_m = Fly()
+            stone = Stone(img, init_y, init_x, init_m)
+            return stone
+        return None
+    """
+
+    def create(self, ti):
+        according the last_t, ti and frq decide weather to creat a new stone or not
         if (ti - self.last_t) > self.frq:
             # update the clock
             self.last_t = ti
@@ -54,7 +71,7 @@ class StoneFactory():
             stone = Stone(img, init_x, init_y, init_m)
             return stone
         return None 
-
+"""
     def create_abs(self):
         # chose a stone from the objects randomly
         index = random.choice(range(self.num_objs))
@@ -66,3 +83,8 @@ class StoneFactory():
         stone = Stone(img, init_x, init_y, init_m)
         return stone
 
+    def create_init_coordinate(self):
+        print(self.width_bg)
+        x = random.random()*(self.width_bg-100)
+        y = 0
+        return x,y

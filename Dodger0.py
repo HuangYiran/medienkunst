@@ -19,6 +19,7 @@ class Dodger:
         self.batch_size = batch_size
         self.cam = cv2.VideoCapture(0)
         self.bs = cv2.createBackgroundSubtractorKNN(detectShadows = False)
+        self.bs.setHistory(100)
         #self.bg = self._bg_init() # background
         self.bg, self.bg2 = bg_init(self.cam, self.mode)
         self.stones = []
@@ -46,7 +47,7 @@ class Dodger:
         cnt = 0
         frames = frames_init(self.cam, self.batch_size) # buffer to hold the frames 
         mirror = True # decide weather to display the video or not
-        stone_fact = StoneFactory(5, './stones') # the factory to create stone
+        stone_fact = StoneFactory(5, './stones', self.bg.shape[1]) # the factory to create stone
         while True:
         #for i in range(1000):
             frames = frames_update(self.cam, frames, self.cycle_length)
@@ -59,7 +60,7 @@ class Dodger:
                     print("current num of stones:", len(self.stones))
                     print time.time()
                 # todo
-                stone = stone_fact.create(time.time())
+                stone = stone_fact.create()
                 if isinstance(stone, list):
                     self.stones.extend(stone)
                 else:
@@ -97,7 +98,7 @@ class Dodger:
                 self._remove_stones()
                 # add the stone to the image we get from the camera
                 if self.debug:
-                    print "drawing the stone in the image"
+
                     print time.time()
                 # img = self._combine_stones(img)
                 img = combine(self.bg, self.bg2, img, mask_player, self.stones, self.mode)

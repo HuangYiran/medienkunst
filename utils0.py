@@ -17,9 +17,9 @@ def bg_init(cam, mode = 1):
     """
     print("--- initializing the background")
     # init 10 frames
-    frames = []
-    for i in range(500):
-        _, img = cam.read()
+    #frames = []
+    #for i in range(500):
+    #    _, img = cam.read()
     _, img = cam.read()
     # process the init, the target is to get a stable picture as the background, the method is use the var
     #while not check_stable(frames):
@@ -93,8 +93,8 @@ def get_player_mask(img, bs, ratio = 0.5):
 
     _, contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    #only can be used in the real test. 
     """
-    only can be used in the real test. 
     x, y, w, h = 0,0,0,0
     for c in contours:
         x1, y1, w1, h1 = cv2.boundingRect(c)
@@ -108,8 +108,7 @@ def get_player_mask(img, bs, ratio = 0.5):
     mask_contour = np.zeros(dilated.shape, dtype = 'uint8')
     mask_contour[x:x+w,y:y+h] = 255
     dilated = cv2.bitwise_and(dilated, dilated, mask = mask_contour)
-    """
-
+"""
     return dilated
 
 def img_sub(img1, img2):
